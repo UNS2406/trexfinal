@@ -1,170 +1,297 @@
-//C1-C7 breakout game
+//TREX GAme using JS
 
 //Declare variables for game objects and behaviour indicators(FLAGS)
-var ball;
-var paddle;
-var brick, bricksGroup;
-var score;
-var gameState;
-var lives;
+var trex, trexRun, trexDead;
+var ground, groundImg, invGround;
+var cloud, cloudImage, cloudsGroup;
+var cactus, cactiGroup, cactus1, cactus2, cactus3, cactus4, cactus5, cactus6;
+var gameOver, resetIcon, resetIconImg, gameOverImg;
+var score, hiScore, displayHS;
+var PLAY, END, gameState;
+var jumpSound, dieSound, checkPointSound;
 
 //Create Media library and load to use it during the course of the software
 //executed only once at the start of the program
-function preload() {}
+function preload() {
+  trexRun = loadAnimation("trex1.png", "trex3.png", "trex4.png");
+  trexDead = loadImage("trex_collided.png");
+
+  groundImg = loadImage("ground2.png");
+
+  cloudImage = loadImage("cloud.png");
+
+  cactus1 = loadImage("obstacle1.png");
+  cactus2 = loadImage("obstacle2.png");
+  cactus3 = loadImage("obstacle3.png");
+  cactus4 = loadImage("obstacle4.png");
+  cactus5 = loadImage("obstacle5.png");
+  cactus6 = loadImage("obstacle6.png");
+
+  resetIconImg = loadImage("restart.png");
+  gameOverImg = loadImage("gameOver.png");
+
+  jumpSound = loadSound("jump.mp3");
+  dieSound = loadSound("die.mp3");
+  checkPointSound = loadSound("checkPoint.mp3");
+}
 
 //define the intial environment of the software(before it is used)
 //by defining the declared variables with default values
 //executed only once at the start of the program
 function setup() {
-  //create ball as a sprite object
-  ball = createSprite(200, 200, 10, 10);
-  //ball.setAnimation("golfball_1");
-  ball.scale = 1;
+  createCanvas(windowWidth, windowHeight);
 
-  //create paddle as a sprite object
-  paddle = createSprite(200, 350, 120, 10);
-  paddle.shapeColor = "blue";
+  //create a trex sprite
+  trex = createSprite(50, height - 130, 20, 50);
+  trex.addAnimation("trexRun", trexRun);
+  trex.addAnimation("trexDead", trexDead);
+  trex.scale = 0.6;
+  trex.debug = false;
+  trex.setCollider("rectangle", 0, 0, 70, 100);
 
-  //create group for bricks
-  bricksGroup = createGroup();
+  //creating the ground sprite
+  ground = createSprite(width / 2, height - 150, 600, 4);
+  ground.addAnimation("moving", groundImg);
+  ground.x = ground.width / 2;
+  ground.debug = false;
+  //creating the invisible ground sprite
+  invGround = createSprite(50, height - 125, 200, 4);
+  invGround.visible = false;
 
-  //create edges in the form of sprites
-  createEdgeSprites();
-
-  //assigning default values
+  //variables for score, highscore values
   score = 0;
-  lives = 3;
-  gameState = "pre-start";
+  hiScore = 0;
+  //indicator to check if highscore should be displayed or not
+  displayHS = false;
 
-  //function call to create a brick row based on y-position and color
-  createBrickRow(65, "red");
-  createBrickRow(65 + 29, "orange");
-  createBrickRow(65 + 29 + 29, "green");
-  createBrickRow(65 + 29 + 29 + 29, "yellow");
+  //default value of Gamestate
+  PLAY = 1;
+  END = 0;
+  gameState = PLAY;
+
+  cactiGroup = createGroup();
+  cloudsGroup = createGroup();
+
+  resetIcon = createSprite(width / 2, height / 2 + 50, 30, 30);
+  resetIcon.addImage("resetIconImg", resetIconImg);
+  resetIcon.scale = 0.5;
+
+  gameOver = createSprite(width / 2, height / 2, 70, 10);
+  gameOver.addImage("gameOverImg", gameOverImg);
+  gameOver.scale = 0.9;
+  gameOver.visible = false;
 }
 
 //All modifications, changes, conditions, manipulations, actions during the course of the program are written inside function draw.
 //All commands to be executed and checked continously or applied throughout the program are written inside function draw.
 //function draw is executed for every frame created since the start of the program.
 function draw() {
-  // color the background area
-  background("black");
+  background("white");
 
-  //display scoreboard and lives counter
-  textSize(20);
-  text("Score: " + score, 40, 25);
-  text("Lives: " + lives, 40, 45);
+  //display Score
+  text("Score:" + score, width - 100, height - 210);
+  //console.log(trex.y);
 
-  text("Gamestate: " + gameState, 200, 45);
+  if (gameState == PLAY) {
+    //Score Calculation
+    score = score + round(getFrameRate() / 30);
 
-  //conditions to check what kind of gamestate is active and choose the behaviour accordingly
-  if (gameState == "pre-start") {
-    //behaviour of the game when the game starts(or restarts)
-    text("Click to serve the ball.", 120, 250);
-    ball.velocityX = 0;
-    ball.velocityY = 0;
-    ball.x = 200;
-    ball.y = 200;
-  } else if (gameState == "end") {
-    //display gameover message
-    text("Game Over", 150, 250);
-    //display gameover message
-    text("Press R to restart", 130, 270);
-    ball.remove();
-    //behaviour to follow when you need to play the game again after losing
-    if (keyDown("R")) {
-      gameState = "pre-start";
-
-      score = 0;
-      lives = 3;
-
-      //create ball as a sprite object
-      ball = createSprite(200, 200, 20, 20);
-      //ball.setAnimation("golfball_1");
-      ball.scale = 0.05;
-    }
-  } else {
-    //add movement to the paddle
-    paddle.x = mouseX;
-    //paddle.x = ball.x;
-
-    //restrict ball movement inside canvas by bouncing it off all the four edges
-    //ball.bounceOff(rightEdge);
-    //ball.bounceOff(leftEdge);
-    //ball.bounceOff(topEdge);
-    ball.bounceOff(bricksGroup, brickHit);
-
-    //condition to make a sound if ball bounces off the paddle
-    if (ball.bounceOff(paddle)) {
+    //display High Score or not
+    if (displayHS == true) {
+      fill("black");
+      stroke("black");
+      text("High Score:" + hiScore, width - 200, height - 210);
     }
 
-    //condition to get the GAME WIN behaviour if all the bricks are destroyed
-    if (!bricksGroup[0]) {
-      //console.log("Won");
-      ball.velocityX = 0;
-      ball.velocityY = 0;
-      text("Well Done!!", 150, 200);
-    }
-    //conditions to bring ball back to default position if it crosses the right/left edge
-    if (ball.x < 60) {
-      ball.x = 60;
+    //score sound for addition of every 100
+    if (score % 100 == 0) {
+      checkPointSound.play();
     }
 
-    if (ball.x > 340) {
-      ball.x = 340;
+    //console.log(height);
+    //console.log(trex.y);
+
+    //trex behaviour
+    if ((touches.length == 1 || keyDown("space")) && trex.y > height - 160) {
+      trex.velocityY = -13;
+      jumpSound.play();
+      touches = [];
     }
-    if (ball.y < 4) {
-      ball.y = 5;
+    trex.velocityY = trex.velocityY + 0.5;
+
+    //ground behaviour
+    ground.velocityX = -(7 + score / 70);
+    if (ground.x < 0) {
+      ground.x = ground.width / 2;
     }
-    //condition to apply behaviour if the ball misses the paddle
-    if (ball.y > 400) {
-      //function call to end the game and reduce life by one
-      lifeover();
+
+    //function call to create and move clouds
+    spawnClouds();
+
+    //function call to create and move obstacles
+    spawnObstacles();
+
+    if (cactiGroup.isTouching(trex)) {
+      gameState = END;
+      dieSound.play();
+      //trex.velocityY = -6;
+      //jumpSound.play();
+    }
+    resetIcon.visible = false;
+    gameOver.visible = false;
+  } else if (gameState == END) {
+    //stopping ground
+    ground.velocityX = 0;
+
+    //changing trex behaviour and aapearance
+    trex.velocityY = 0;
+    trex.changeAnimation("trexDead", trexDead);
+
+
+    //stopping cacti and clouds
+    cactiGroup.setVelocityXEach(0);
+    cloudsGroup.setVelocityXEach(0);
+
+
+    //freezing cacti andc louds lifetime so the current visioble ones are not destroyed
+    cactiGroup.setLifetimeEach(-1);
+    cloudsGroup.setLifetimeEach(-1);
+
+    resetIcon.visible = true;
+    gameOver.visible = true;
+
+    if (hiScore < score) {
+      hiScore = score;
+    }
+    fill("black");
+    stroke("black");
+    text("High Score:" + hiScore, width - 200, height - 210);
+
+    if (mousePressedOver(resetIcon)) {
+      startOver();
     }
   }
 
-  //display sprite objects
+  trex.collide(invGround);
   drawSprites();
 }
 
-//function definition to create a brick row as a sprite object based on y-position and color
-function createBrickRow(yInput, colorInput) {
-  //for loop to create six bricks in a row
-  for (var i = 0; i < 6; i++) {
-    brick = createSprite(65 + 54 * i, yInput, 50, 25);
-    brick.shapeColor = colorInput;
-    bricksGroup.add(brick);
+//function definition to create and move clouds
+function spawnClouds() {
+  if (frameCount % 30 == 0) {
+    //create cloud objects after every 30 frames
+    //to attain this we have to divide the framecount by 30 and check if the remainder is equal to zero
+    //if framecount is divisible by given number then a cloud object will be created
+
+
+    //create and define a cloud sprite object in declare variable
+    cloud = createSprite(width, height - 200, 10, 10);
+
+    //velocity of cloud which makes it move from left to right
+    cloud.velocityX = -4;
+
+    //random is a function used to egnerate any number between given range.
+    cloud.y = random(height - 275, height - 200);
+
+    cloud.depth = trex.depth;
+    trex.depth = trex.depth + 1;
+    cloud.debug = false;
+
+    cloud.addImage("cloudImage", cloudImage);
+    cloud.scale = 0.5;
+
+
+    //generating lifetime to solve the problem of memory overload
+    //by dividing the distance to be crossed by the object with the speed of the object.
+    //here width = width of canvas(600) and speed is velocity of cloud(-4)
+    //as velocity is negative, we need to make the lifetime as positive by muliplying the answer with -1;
+    cloud.lifetime = (-1) * (width / cloud.velocityX); cloudsGroup.add(cloud);
   }
 }
 
-// function definition and call to be triggered when a mouse button is pressed
-// we use this function to add movement to the ball
-function mouseClicked() {
-  console.log("sdvdf");
-  if (gameState == "pre-start") {
-    ball.velocityX = 3;
-    ball.velocityY = 3;
+//function definition to create and move obstacles
+function spawnObstacles() {
+  //create cactus objects after every 60 frames
+  //to attain this we have to divide the framecount by 60 and check if the remainder is equal to zero
+  //if framecount is divisible by given number then a cactus object will be created
+  if (frameCount % 60 == 0) {
+    //create and define a cactus sprite object in declare variable
+    cactus = createSprite(width, height - 160, 20, 50);
 
-    gameState = "play";
+    //velocity of cactus which makes it move from left to right
+    cactus.velocityX = -(7 + score / 120);
+    cactus.debug = false;
+
+    //generating lifetime to solve the problem of memory leak
+    //by dividing the distance to be crossed by the object with the speed of the object.
+    //here width = width of canvas(400) and speed is velocity of cactus(-6)
+    //as velocity is negative, we need to make the lifetime as positive by muliplying the answer with -1;
+    cactus.lifetime = -1 * (width / cactus.velocityX);
+
+    //random is a function used to egnerate any number between given range.
+    //Math.round function is used to round and convert any decimal number to its nearest whole integer.
+    //generate a random number between 1 to 6 and save it in variable caseNumber.
+    var caseNumber = Math.round(random(1, 6));
+    console.log(caseNumber);
+    //switch case passes a single variable to match with cases
+    switch (caseNumber) {
+      case 1:
+        cactus.addImage("cactus1", cactus1);
+        //adjust the size of animation for cactus sprite by keeping the width and height ratio stable
+        cactus.scale = 0.9;
+        break;
+      case 2:
+        cactus.addImage("cactus2", cactus2);
+        //adjust the size of animation for cactus sprite by keeping the width and height ratio stable
+        cactus.scale = 0.9;
+        break;
+      case 3:
+        cactus.addImage("cactus3", cactus3);
+        //adjust the size of animation for cactus sprite by keeping the width and height ratio stable
+        cactus.scale = 0.85;
+        break;
+      case 4:
+        cactus.addImage("cactus4", cactus4);
+        //adjust the size of animation for cactus sprite by keeping the width and height ratio stable
+        cactus.scale = 0.75;
+        break;
+      case 5:
+        cactus.addImage("cactus5", cactus5);
+        //adjust the size of animation for cactus sprite by keeping the width and height ratio stable
+        cactus.scale = 0.7;
+        break;
+      case 6:
+        cactus.addImage("cactus6", cactus6);
+        //adjust the size of animation for cactus sprite by keeping the width and height ratio stable
+        cactus.scale = 0.7;
+        break;
+      default:
+        cactus.addImage("cactus1", cactus1);
+        //adjust the size of animation for cactus sprite by keeping the width and height ratio stable
+        cactus.scale = 0.9;
+        break;
+    }
+    //Adding each cactus to Group
+    //1. to detect collisons between trex and the group
+    //2. to manage and track all cactus
+    //3. because it it mot possible to modify or control any individual cactus
+
+    //Group.add(sprite)
+    cactiGroup.add(cactus);
   }
 }
 
-//function definition to end the game and reduce life by one
-function lifeover() {
-  lives = lives - 1;
-  if (lives >= 1) {
-    gameState = "pre-start";
-  } else {
-    gameState = "end";
-  }
-}
+//function to reset score and startOver the game
+function startOver() {
+  gameState = PLAY;
 
-function brickHit(ball, brick) {
-  brick.remove();
-  score = score + 5;
-  //keep on increasing th speed of the ball
-  if (ball.velocityY < 12 && ball.velocityY > -12) {
-    ball.velocityX *= 0.05;
-    ball.velocityY *= 0.05;
+  cloudsGroup.destroyEach();
+  cactiGroup.destroyEach();
+
+  displayHS = true;
+  trex.changeAnimation("trexRun", trexRun);
+  if (hiScore < score) {
+    hiScore = score;
   }
+  score = 0;
 }
